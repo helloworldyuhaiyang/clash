@@ -130,10 +130,12 @@ type Clash struct {
 }
 
 type Trojan struct {
-	Name     string `json:"name"`
-	Type     string `json:"type"`
-	Server   string `json:"server"`
-	Password string `json:"password"`
-	Sni      string `json:"sni,omitempty"`
-	Port     any    `json:"port"`
+	Name           string `json:"name"`
+	Type           string `json:"type"`
+	Server         string `json:"server"`
+	Password       string `json:"password"`
+	Sni            string `json:"sni,omitempty"`
+	Port           any    `json:"port"`
+	Udp            bool   `json:"udp,omitempty"`
+	SkipCertVerify bool   `json:"skip-cert-verify,omitempty"`
 }

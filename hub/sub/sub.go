@@ -7,8 +7,6 @@ import (
 	"github.com/Dreamacro/clash/hub/executor"
 	"gopkg.in/yaml.v3"
 	"reflect"
-	"strconv"
-
 	//C "github.com/Dreamacro/clash/constant"
 	"github.com/Dreamacro/clash/log"
 	"io"
@@ -40,13 +38,6 @@ func updateConfig(ss []config.SubServer) {
 			return
 		}
 		proxies := ParseProxy(string(decodeString))
-		//marshal, err := json.Marshal(proxies)
-		//if err != nil {
-		//	log.Errorln("marshal err: %s", err)
-		//	return
-		//}
-		//fmt.Println(string(marshal))
-		//parseInfo(info)
 		allProxies[s.Name] = proxies
 	}
 	// merge config
@@ -59,52 +50,6 @@ func updateConfig(ss []config.SubServer) {
 	}
 	executor.ApplyConfig(cf, false)
 }
-
-//func parseInfo(info string) (proxies []*proxyInfo, cloudName string) {
-//	// base64 decode
-//	if i := len(info) % 4; i != 0 {
-//		info += strings.Repeat("=", 4-i)
-//	}
-//	info = strings.ReplaceAll(info, " ", "+")
-//	decoded, err := base64.StdEncoding.DecodeString(info)
-//	if err != nil {
-//		log.Errorln("base64 decode sub err: %s", err)
-//		return
-//	}
-//
-//	//log.Debugln("parse sub: %s, decoded: %s\n", unescape, decoded)
-//
-//	scanner := bufio.NewScanner(bytes.NewReader(decoded))
-//	for scanner.Scan() {
-//		var p proxyInfo
-//		lineInfo := scanner.Text()
-//		info = strings.TrimSpace(info)
-//		if len(info) == 0 {
-//			continue
-//		}
-//		switch {
-//		case strings.HasPrefix(scanner.Text(), "ss://"):
-//		//p = buildSS(lineInfo)
-//		//fmt.Printf("info: %+v\n", info)
-//		//case strings.HasPrefix(scanner.Text(), "ssr://"):
-//		//	log.Warnln("ssr is not supported now")
-//		case strings.HasPrefix(scanner.Text(), "vmess://"):
-//			p, err = v2rConf(lineInfo)
-//		case strings.HasPrefix(scanner.Text(), "trojan://"):
-//			p, err = buildTrojan(lineInfo)
-//			if err != nil {
-//				log.Errorln("build trojan err: %s", err)
-//				continue
-//			}
-//		}
-//		if p == nil {
-//			continue
-//		}
-//		proxies = append(proxies, p)
-//	}
-//
-//	return
-//}
 
 /*
 proxies:
@@ -178,50 +123,6 @@ func mergeAllConfig(ps map[string][]any) []byte {
 		return nil
 	}
 	return data
-}
-
-func buildTrojan(info string) (proxyInfo, error) {
-	// 解析 URL
-	u, err := url.Parse(info)
-	if err != nil {
-		return nil, fmt.Errorf("parse url err: %s", err)
-	}
-
-	// 解析查询参数
-	queryParams, err := url.ParseQuery(u.RawQuery)
-	if err != nil {
-		return nil, fmt.Errorf("parse query params err: %s", err)
-	}
-
-	// 解析端口号
-	port, err := strconv.Atoi(u.Port())
-	if err != nil {
-		return nil, fmt.Errorf("parse port err: %s", err)
-	}
-
-	// 解析 skip-cert-verify 参数
-	skipCertVerify, err := strconv.ParseBool(queryParams.Get("allowInsecure"))
-	if err != nil {
-		return nil, fmt.Errorf("parse udp err: %s", err)
-	}
-
-	// 解析 Name
-	hashFragment, err := url.PathUnescape(u.Fragment)
-	if err != nil {
-		return nil, fmt.Errorf("parse hash fragment err: %s", err)
-	}
-	p := proxyInfo{
-		"name":           hashFragment,
-		"type":           "trojan",
-		"server":         u.Hostname(),
-		"port":           port,
-		"password":       strings.TrimPrefix(u.User.String(), "trojan:"),
-		"udp":            true,
-		"skipCertVerify": skipCertVerify,
-		"sni":            queryParams.Get("sni"),
-	}
-	// 创建 ProxyInfo 结构体并赋值
-	return p, nil
 }
 
 func getInfo(u string) (string, error) {

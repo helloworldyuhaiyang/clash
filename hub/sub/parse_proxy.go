@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cast"
@@ -26,9 +27,6 @@ var (
 	//ssReg      = regexp.MustCompile(`(?m)ss://(\w+)@([^:]+):(\d+)\?plugin=([^;]+);\w+=(\w+)(?:;obfs-host=)?([^#]+)?#(.+)`)
 	ssReg2 = regexp.MustCompile(`(?m)([\-0-9a-z]+):(.+)@(.+):(\d+)(.+)?#(.+)`)
 	ssReg  = regexp.MustCompile(`(?m)([^@]+)(@.+)?#?(.+)?`)
-
-	trojanReg  = regexp.MustCompile(`(?m)^trojan://(.+)@(.+):(\d+)\?allowInsecure=\d&peer=(.+)#(.+)`)
-	trojanReg2 = regexp.MustCompile(`(?m)^trojan://(.+)@(.+):(\d+)#(.+)$`)
 )
 
 func ParseProxy(content string) (proxies []any) {
@@ -81,15 +79,15 @@ func subProtocolBody(proxy string, prefix string) string {
 func parseProxy(proxy string) (any, error) {
 	switch {
 	case strings.HasPrefix(proxy, ssrHeader):
-		return ssrConf(subProtocolBody(proxy, ssrHeader))
+		//return ssrConf(subProtocolBody(proxy, ssrHeader))
 	case strings.HasPrefix(proxy, vmessHeader):
-		return v2rConf(subProtocolBody(proxy, vmessHeader))
+		//return v2rConf(subProtocolBody(proxy, vmessHeader))
 	case strings.HasPrefix(proxy, ssHeader):
-		return ssConf(subProtocolBody(proxy, ssHeader))
+		//return ssConf(subProtocolBody(proxy, ssHeader))
 	case strings.HasPrefix(proxy, trojanHeader):
-		return trojanConf(subProtocolBody(proxy, trojanHeader))
+		return trojanConf(proxy)
 	case strings.HasPrefix(proxy, hysteriaHeader):
-		return hysteriaConf(proxy)
+		//return hysteriaConf(proxy)
 	}
 
 	return nil, fmt.Errorf("unknown proxy type")
@@ -375,6 +373,46 @@ func ssConf(s string) (*ClashSS, error) {
 	return ss, nil
 }
 
-func trojanConf(s string) (*Trojan, error) {
-	return nil, fmt.Errorf("not support trojan yet")
+func trojanConf(s string) (map[string]any, error) {
+	// 解析 URL
+	u, err := url.Parse(s)
+	if err != nil {
+		return nil, fmt.Errorf("parse url err: %s", err)
+	}
+
+	// 解析查询参数
+	queryParams, err := url.ParseQuery(u.RawQuery)
+	if err != nil {
+		return nil, fmt.Errorf("parse query params err: %s", err)
+	}
+
+	// 解析端口号
+	port, err := strconv.Atoi(u.Port())
+	if err != nil {
+		return nil, fmt.Errorf("parse port err: %s", err)
+	}
+
+	// 解析 skip-cert-verify 参数
+	skipCertVerify, err := strconv.ParseBool(queryParams.Get("allowInsecure"))
+	if err != nil {
+		return nil, fmt.Errorf("parse udp err: %s", err)
+	}
+
+	// 解析 Name
+	hashFragment, err := url.PathUnescape(u.Fragment)
+	if err != nil {
+		return nil, fmt.Errorf("parse hash fragment err: %s", err)
+	}
+	p := &Trojan{
+		Name:           hashFragment,
+		Type:           "trojan",
+		Server:         u.Hostname(),
+		Port:           port,
+		Password:       strings.TrimPrefix(u.User.String(), "trojan:"),
+		Udp:            true,
+		SkipCertVerify: skipCertVerify,
+		Sni:            queryParams.Get("sni"),
+	}
+
+	return toMap(p)
 }
