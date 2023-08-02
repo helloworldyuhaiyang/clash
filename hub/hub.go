@@ -4,6 +4,7 @@ import (
 	"github.com/Dreamacro/clash/config"
 	"github.com/Dreamacro/clash/hub/executor"
 	"github.com/Dreamacro/clash/hub/route"
+	"github.com/Dreamacro/clash/hub/sub"
 )
 
 type Option func(*config.Config)
@@ -43,6 +44,10 @@ func Parse(options ...Option) error {
 
 	if cfg.General.ExternalController != "" {
 		go route.Start(cfg.General.ExternalController, cfg.General.Secret)
+	}
+
+	if len(cfg.General.Subs) > 0 {
+		go sub.Start(cfg.General.Subs)
 	}
 
 	executor.ApplyConfig(cfg, true)

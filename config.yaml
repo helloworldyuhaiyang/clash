@@ -1,0 +1,32 @@
+mixed-port: 7899
+allow-lan: true
+bind-address: '*'
+mode: rule
+log-level: debug
+external-controller: '127.0.0.1:9090'
+subs:
+#  - {name: 'dog', url: 'https://s.91gzy.top/api/v1/client/subscribe?token=9832fc30b439a41deb4e71e7ab867697', interval: 300 }
+  - {name: 'mikasa', url: 'https://mi6k1a6sa.xyz/api/v1/client/subscribe?token=9d0f29ff0c73e584f85d8db4e2b18bf6', interval: 300 }
+
+dns:
+  enable: true
+  ipv6: false
+  default-nameserver: [223.5.5.5, 119.29.29.29]
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  use-hosts: true
+  nameserver: ['https://doh.pub/dns-query', 'https://dns.alidns.com/dns-query']
+  fallback: ['https://doh.dns.sb/dns-query', 'https://dns.cloudflare.com/dns-query', 'https://dns.twnic.tw/dns-query', 'tls://8.8.4.4:853']
+  fallback-filter: { geoip: true, ipcidr: [240.0.0.0/4, 0.0.0.0/32] }
+
+#proxies:
+#  - { name: 'S1', type: vmess, server: 6w7j3p04.mcfront.xyz, port: 31116, uuid: fb50cf9e-b84e-4b31-b95c-1656c1c08236, alterId: 0, cipher: auto, udp: true, tls: true, servername: jp04.lovemc.xyz }
+#  - { name: 'S2', type: vmess, server: 6w7j3p05.mcfront.xyz, port: 31106, uuid: fb50cf9e-b84e-4b31-b95c-1656c1c08236, alterId: 0, cipher: auto, udp: true, tls: true, servername: jp05.lovemc.xyz }
+#  - { name: 'S3', type: vmess, server: 6w7j3p06.mcfront.xyz, port: 31111, uuid: fb50cf9e-b84e-4b31-b95c-1656c1c08236, alterId: 0, cipher: auto, udp: true, tls: true, servername: jp06.lovemc.xyz }
+#
+#proxy-groups:
+#  - { name: all, type: select, proxies: ['best', 'fallback',  'S1', 'S2']  }
+#  - { name: best, type: url-test, url: "https://api.openai.com", interval: 300, proxies: ['S1', 'S2'] }
+#  - { name: fallback, type: fallback, url: "https://api.openai.com", interval: 300, proxies: ['S1', 'S2'] }
+#rules:
+#  - 'MATCH,all'

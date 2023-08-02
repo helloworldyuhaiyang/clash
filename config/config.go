@@ -30,6 +30,7 @@ import (
 type General struct {
 	Inbound
 	Controller
+	Subs        []SubServer
 	Mode        T.TunnelMode `json:"mode"`
 	LogLevel    log.LogLevel `json:"log-level"`
 	IPv6        bool         `json:"ipv6"`
@@ -47,6 +48,13 @@ type Inbound struct {
 	Authentication []string `json:"authentication"`
 	AllowLan       bool     `json:"allow-lan"`
 	BindAddress    string   `json:"bind-address"`
+}
+
+// SubServer sub config
+type SubServer struct {
+	Name     string `yaml:"name"`
+	URL      string `yaml:"url"`
+	Interval int    `yaml:"interval"`
 }
 
 // Controller
@@ -104,7 +112,11 @@ type Config struct {
 	Providers    map[string]providerTypes.ProxyProvider
 	Tunnels      []Tunnel
 }
-
+type RawSub struct {
+	Name     string `yaml:"name"`
+	URL      string `yaml:"url"`
+	Interval int    `yaml:"interval"`
+}
 type RawDNS struct {
 	Enable            bool              `yaml:"enable"`
 	IPv6              bool              `yaml:"ipv6"`
@@ -204,6 +216,7 @@ type RawConfig struct {
 	Interface          string       `yaml:"interface-name"`
 	RoutingMark        int          `yaml:"routing-mark"`
 	Tunnels            []Tunnel     `yaml:"tunnels"`
+	Subs               []RawSub     `yaml:"subs"`
 
 	ProxyProvider map[string]map[string]any `yaml:"proxy-providers"`
 	Hosts         map[string]string         `yaml:"hosts"`
@@ -254,6 +267,7 @@ func UnmarshalRawConfig(buf []byte) (*RawConfig, error) {
 		Profile: Profile{
 			StoreSelected: true,
 		},
+		Subs: []RawSub{},
 	}
 
 	if err := yaml.Unmarshal(buf, rawCfg); err != nil {
@@ -325,6 +339,15 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 		}
 	}
 
+	subs := make([]SubServer, 0, len(cfg.Subs))
+	for _, sub := range cfg.Subs {
+		subs = append(subs, SubServer{
+			Name:     sub.Name,
+			URL:      sub.URL,
+			Interval: sub.Interval,
+		})
+	}
+
 	return &General{
 		Inbound: Inbound{
 			Port:        cfg.Port,
@@ -340,6 +363,7 @@ func parseGeneral(cfg *RawConfig) (*General, error) {
 			ExternalUI:         cfg.ExternalUI,
 			Secret:             cfg.Secret,
 		},
+		Subs:        subs,
 		Mode:        cfg.Mode,
 		LogLevel:    cfg.LogLevel,
 		IPv6:        cfg.IPv6,

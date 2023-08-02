@@ -78,6 +78,13 @@ func ApplyConfig(cfg *config.Config, force bool) {
 	updateTunnels(cfg.Tunnels)
 }
 
+func UpdateProxies(proxies map[string]C.Proxy, providers map[string]provider.ProxyProvider) {
+	mux.Lock()
+	defer mux.Unlock()
+
+	updateProxies(proxies, providers)
+}
+
 func GetGeneral() *config.General {
 	ports := listener.GetPorts()
 	authenticator := []string{}
