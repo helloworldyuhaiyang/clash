@@ -79,13 +79,13 @@ func subProtocolBody(proxy string, prefix string) string {
 func parseProxy(proxy string) (any, error) {
 	switch {
 	case strings.HasPrefix(proxy, ssrHeader):
-		//return ssrConf(subProtocolBody(proxy, ssrHeader))
+		return ssrConf(subProtocolBody(proxy, ssrHeader))
 	case strings.HasPrefix(proxy, vmessHeader):
-		//return v2rConf(subProtocolBody(proxy, vmessHeader))
+		return v2rConf(subProtocolBody(proxy, vmessHeader))
 	case strings.HasPrefix(proxy, ssHeader):
 		return ssConf(proxy)
 	case strings.HasPrefix(proxy, trojanHeader):
-		//return trojanConf(proxy)
+		return trojanConf(proxy)
 	case strings.HasPrefix(proxy, hysteriaHeader):
 		//return hysteriaConf(proxy)
 	}
@@ -151,12 +151,12 @@ func hysteriaConf(body string) (map[string]any, error) {
 }
 
 func v2rConf(s string) (map[string]any, error) {
-	vmconfig, err := base64.StdEncoding.DecodeString(s)
+	vmconfig, err := base64Decode(s)
 	if err != nil {
 		return nil, fmt.Errorf("base64 decode failed, err: %v", err)
 	}
 	vmess := Vmess{}
-	err = json.Unmarshal(vmconfig, &vmess)
+	err = json.Unmarshal([]byte(vmconfig), &vmess)
 	if err != nil {
 		return nil, fmt.Errorf("v2ray config json unmarshal failed, err: %v", err)
 	}
@@ -246,7 +246,7 @@ func ssdConf(ssdJson string) []ClashSS {
 }
 
 func ssrConf(s string) (map[string]any, error) {
-	rawSSRConfig, err := base64.StdEncoding.DecodeString(s)
+	rawSSRConfig, err := base64Decode(s)
 	if err != nil {
 		return nil, err
 	}
@@ -323,8 +323,9 @@ func ssConf(s string) (map[string]any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error decoding ss URL: %v", err)
 	}
-	if strings.Contains(string(rawSSRConfig), "@") {
-		rawSSRConfig = strings.Replace(rawSSRConfig, "@", ":", 1)
+	ssConfig := string(rawSSRConfig)
+	if strings.Contains(ssConfig, "@") {
+		ssConfig = strings.Replace(ssConfig, "@", ":", 1)
 	}
 	port, err := strconv.Atoi(u.Port())
 	if err != nil {
@@ -336,7 +337,7 @@ func ssConf(s string) (map[string]any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse hash fragment err: %s", err)
 	}
-	params := strings.Split(rawSSRConfig, `:`)
+	params := strings.Split(ssConfig, `:`)
 	ss := ClashSS{}
 	ss.Type = "ss"
 	ss.Udp = true
@@ -454,13 +455,13 @@ func trojanConf(s string) (map[string]any, error) {
 	return toMap(p)
 }
 
-func base64Decode(s string) (string, error) {
+func base64Decode(s string) ([]byte, error) {
 	if i := len(s) % 4; i != 0 {
 		s += strings.Repeat("=", 4-i)
 	}
 	b, err := base64.StdEncoding.DecodeString(s)
 	if err != nil {
-		return "", fmt.Errorf("base64 decode failed, err: %v", err)
+		return nil, fmt.Errorf("base64 decode failed, err: %v", err)
 	}
-	return string(b), nil
+	return b, nil
 }

@@ -31,12 +31,12 @@ func updateConfig(ss []config.SubServer) {
 			return
 		}
 		// 解析数据
-		decodeString, err := base64Decode(info)
+		decoded, err := base64Decode(info)
 		if err != nil {
 			log.Errorln("base64 decode err: %s", err)
 			return
 		}
-		proxies := ParseProxy(decodeString)
+		proxies := ParseProxy(string(decoded))
 		allProxies[s.Name] = proxies
 	}
 	// merge config
