@@ -72,6 +72,7 @@ type ClashSS struct {
 	Password   string      `json:"password,omitempty"`
 	Cipher     string      `json:"cipher,omitempty"`
 	Plugin     string      `json:"plugin,omitempty"`
+	Udp        bool        `json:"udp,omitempty"`
 	PluginOpts *PluginOpts `json:"plugin-opts,omitempty"`
 }
 

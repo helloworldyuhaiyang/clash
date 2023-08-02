@@ -1,7 +1,6 @@
 package sub
 
 import (
-	"encoding/base64"
 	"fmt"
 	"github.com/Dreamacro/clash/config"
 	"github.com/Dreamacro/clash/hub/executor"
@@ -32,12 +31,12 @@ func updateConfig(ss []config.SubServer) {
 			return
 		}
 		// 解析数据
-		decodeString, err := base64.StdEncoding.DecodeString(info)
+		decodeString, err := base64Decode(info)
 		if err != nil {
 			log.Errorln("base64 decode err: %s", err)
 			return
 		}
-		proxies := ParseProxy(string(decodeString))
+		proxies := ParseProxy(decodeString)
 		allProxies[s.Name] = proxies
 	}
 	// merge config

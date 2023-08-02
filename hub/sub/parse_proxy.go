@@ -83,9 +83,9 @@ func parseProxy(proxy string) (any, error) {
 	case strings.HasPrefix(proxy, vmessHeader):
 		//return v2rConf(subProtocolBody(proxy, vmessHeader))
 	case strings.HasPrefix(proxy, ssHeader):
-		//return ssConf(subProtocolBody(proxy, ssHeader))
+		return ssConf(proxy)
 	case strings.HasPrefix(proxy, trojanHeader):
-		return trojanConf(proxy)
+		//return trojanConf(proxy)
 	case strings.HasPrefix(proxy, hysteriaHeader):
 		//return hysteriaConf(proxy)
 	}
@@ -118,14 +118,14 @@ type ClashHysteria struct {
 
 // https://hysteria.network/docs/uri-scheme/
 // hysteria://host:port?protocol=udp&auth=123456&peer=sni.domain&insecure=1&upmbps=100&downmbps=100&alpn=hysteria&obfs=xplus&obfsParam=123456#remarks
-func hysteriaConf(body string) (any, error) {
+func hysteriaConf(body string) (map[string]any, error) {
 	u, err := url.Parse(body)
 	if err != nil {
 		return nil, fmt.Errorf("parse hysteria failed, err: %v", err)
 	}
 
 	query := u.Query()
-	return &ClashHysteria{
+	c := &ClashHysteria{
 		Name:                u.Fragment,
 		Type:                "hysteria",
 		Server:              u.Hostname(),
@@ -145,7 +145,9 @@ func hysteriaConf(body string) (any, error) {
 		DisableMtuDiscovery: cast.ToBool(query.Get("disable_mtu_discovery")),
 		Fingerprint:         query.Get("fingerprint"),
 		FastOpen:            cast.ToBool(query.Get("fast-open")),
-	}, nil
+	}
+
+	return toMap(c)
 }
 
 func v2rConf(s string) (map[string]any, error) {
@@ -243,7 +245,7 @@ func ssdConf(ssdJson string) []ClashSS {
 	return clashSSSlice
 }
 
-func ssrConf(s string) (*ClashRSSR, error) {
+func ssrConf(s string) (map[string]any, error) {
 	rawSSRConfig, err := base64.StdEncoding.DecodeString(s)
 	if err != nil {
 		return nil, err
@@ -279,7 +281,7 @@ func ssrConf(s string) (*ClashRSSR, error) {
 		return nil, fmt.Errorf("ssr config invalid")
 	}
 	passwordBase64 := suffix[0]
-	password, err := base64.StdEncoding.DecodeString(passwordBase64)
+	password, err := base64Decode(passwordBase64)
 	if err != nil {
 		return nil, fmt.Errorf("base64 decode password failed, err: %v", err)
 	}
@@ -291,7 +293,7 @@ func ssrConf(s string) (*ClashRSSR, error) {
 	}
 
 	for k, v := range m {
-		de, err := base64.StdEncoding.DecodeString(v[0])
+		de, err := base64Decode(v[0])
 		if err != nil {
 			return nil, fmt.Errorf("base64 decode %s failed, err: %v", k, err)
 		}
@@ -309,69 +311,104 @@ func ssrConf(s string) (*ClashRSSR, error) {
 			continue
 		}
 	}
-	return ssr, nil
+	return toMap(ssr)
 }
 
-func ssConf(s string) (*ClashSS, error) {
-	s, err := url.PathUnescape(s)
+func ssConf(s string) (map[string]any, error) {
+	u, err := url.Parse(s)
 	if err != nil {
-		return nil, fmt.Errorf("url path unescape failed, err: %v", err)
+		return nil, fmt.Errorf("error parsing ss URL: %v", err)
 	}
-
-	findStr := ssReg.FindStringSubmatch(s)
-	if len(findStr) < 4 {
-		return nil, fmt.Errorf("ss config invalid, it should has 4 parts")
-	}
-
-	rawSSRConfig, err := base64.StdEncoding.DecodeString(findStr[1])
+	rawSSRConfig, err := base64Decode(u.User.Username())
 	if err != nil {
-		return nil, fmt.Errorf("base64 decode ss config failed, err: %v", err)
+		return nil, fmt.Errorf("error decoding ss URL: %v", err)
+	}
+	if strings.Contains(string(rawSSRConfig), "@") {
+		rawSSRConfig = strings.Replace(rawSSRConfig, "@", ":", 1)
+	}
+	port, err := strconv.Atoi(u.Port())
+	if err != nil {
+		return nil, fmt.Errorf("parse port err: %s", err)
 	}
 
-	s = strings.ReplaceAll(s, findStr[1], string(rawSSRConfig))
-	findStr = ssReg2.FindStringSubmatch(s)
-
-	ss := &ClashSS{}
+	// 解析 Name
+	hashFragment, err := url.PathUnescape(u.Fragment)
+	if err != nil {
+		return nil, fmt.Errorf("parse hash fragment err: %s", err)
+	}
+	params := strings.Split(rawSSRConfig, `:`)
+	ss := ClashSS{}
 	ss.Type = "ss"
-	ss.Cipher = findStr[1]
-	ss.Password = findStr[2]
-	ss.Server = findStr[3]
-	ss.Port = findStr[4]
-	ss.Name = findStr[6]
-
-	if findStr[5] != "" && strings.Contains(findStr[5], "plugin") {
-		query := findStr[5][strings.Index(findStr[5], "?")+1:]
-		queryMap, err := url.ParseQuery(query)
-		if err != nil {
-			return nil, fmt.Errorf("parse ss plugin query failed, err: %v", err)
-		}
-
-		ss.Plugin = queryMap["plugin"][0]
-		p := new(PluginOpts)
-		switch {
-		case strings.Contains(ss.Plugin, "obfs"):
-			ss.Plugin = "obfs"
-			p.Mode = queryMap["obfs"][0]
-			if strings.Contains(query, "obfs-host=") {
-				p.Host = queryMap["obfs-host"][0]
-			}
-		case ss.Plugin == "v2ray-plugin":
-			p.Mode = queryMap["mode"][0]
-			if strings.Contains(query, "host=") {
-				p.Host = queryMap["host"][0]
-			}
-			if strings.Contains(query, "path=") {
-				p.Path = queryMap["path"][0]
-			}
-			p.Mux = strings.Contains(query, "mux")
-			p.Tls = strings.Contains(query, "tls")
-			p.SkipCertVerify = true
-		}
-		ss.PluginOpts = p
-	}
-
-	return ss, nil
+	ss.Udp = true
+	ss.Cipher = params[0]
+	ss.Password = params[1]
+	ss.Server = u.Hostname()
+	ss.Port = port
+	ss.Name = hashFragment
+	return toMap(ss)
 }
+
+//func ssConf(s string) (map[string]any, error) {
+//
+//	s, err := url.PathUnescape(s)
+//	if err != nil {
+//		return nil, fmt.Errorf("url path unescape failed, err: %v", err)
+//	}
+//
+//	findStr := ssReg.FindStringSubmatch(s)
+//	if len(findStr) < 4 {
+//		return nil, fmt.Errorf("ss config invalid, it should has 4 parts")
+//	}
+//
+//	rawSSRConfig, err := base64Decode(findStr[1])
+//	if err != nil {
+//		return nil, fmt.Errorf("base64 decode ss config failed, err: %v", err)
+//	}
+//
+//	s = strings.ReplaceAll(s, findStr[1], string(rawSSRConfig))
+//	findStr = ssReg2.FindStringSubmatch(s)
+//
+//	ss := &ClashSS{}
+//	ss.Type = "ss"
+//	ss.Cipher = findStr[1]
+//	ss.Password = findStr[2]
+//	ss.Server = findStr[3]
+//	ss.Port = findStr[4]
+//	ss.Name = findStr[6]
+//
+//	if findStr[5] != "" && strings.Contains(findStr[5], "plugin") {
+//		query := findStr[5][strings.Index(findStr[5], "?")+1:]
+//		queryMap, err := url.ParseQuery(query)
+//		if err != nil {
+//			return nil, fmt.Errorf("parse ss plugin query failed, err: %v", err)
+//		}
+//
+//		ss.Plugin = queryMap["plugin"][0]
+//		p := new(PluginOpts)
+//		switch {
+//		case strings.Contains(ss.Plugin, "obfs"):
+//			ss.Plugin = "obfs"
+//			p.Mode = queryMap["obfs"][0]
+//			if strings.Contains(query, "obfs-host=") {
+//				p.Host = queryMap["obfs-host"][0]
+//			}
+//		case ss.Plugin == "v2ray-plugin":
+//			p.Mode = queryMap["mode"][0]
+//			if strings.Contains(query, "host=") {
+//				p.Host = queryMap["host"][0]
+//			}
+//			if strings.Contains(query, "path=") {
+//				p.Path = queryMap["path"][0]
+//			}
+//			p.Mux = strings.Contains(query, "mux")
+//			p.Tls = strings.Contains(query, "tls")
+//			p.SkipCertVerify = true
+//		}
+//		ss.PluginOpts = p
+//	}
+//
+//	return toMap(ss)
+//}
 
 func trojanConf(s string) (map[string]any, error) {
 	// 解析 URL
@@ -415,4 +452,15 @@ func trojanConf(s string) (map[string]any, error) {
 	}
 
 	return toMap(p)
+}
+
+func base64Decode(s string) (string, error) {
+	if i := len(s) % 4; i != 0 {
+		s += strings.Repeat("=", 4-i)
+	}
+	b, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		return "", fmt.Errorf("base64 decode failed, err: %v", err)
+	}
+	return string(b), nil
 }
