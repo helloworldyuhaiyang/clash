@@ -146,3 +146,9 @@ lint-fix: $(foreach os,$(LINT_OS_LIST),$(os)-lint-fix)
 
 clean:
 	rm $(BINDIR)/*
+
+docker-build:
+	docker build . -t registry.cn-hangzhou.aliyuncs.com/qiansuan/clash:latest
+
+docker-push: docker-build
+	docker push registry.cn-hangzhou.aliyuncs.com/qiansuan/clash:latest
