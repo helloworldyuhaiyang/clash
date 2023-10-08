@@ -152,3 +152,6 @@ docker-build:
 
 docker-push: docker-build
 	docker push registry.cn-hangzhou.aliyuncs.com/qiansuan/clash:latest
+
+docker-run:
+	docker run -d -p 7899:7899 --name qsClash registry.cn-hangzhou.aliyuncs.com/qiansuan/clash:latest

@@ -5,4 +5,4 @@ RUN  wget -O /root/.config/clash/Country.mmdb https://github.com/Dreamacro/maxmi
 COPY ./config.yaml /root/.config/clash/config.yaml
 COPY ./bin/clash-linux-amd64 /app/clash
 RUN chmod +x /app/clash
-ENTRYPOINT ["/app/clash"]
+CMD ["/app/clash"]
