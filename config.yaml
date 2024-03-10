@@ -5,7 +5,7 @@ mode: rule
 log-level: debug
 external-controller: '127.0.0.1:9090'
 subs:
-  - {name: 'dog', url: 'https://s.91gzy.top/api/v1/client/subscribe?token=9832fc30b439a41deb4e71e7ab867697', interval: 300 }
+#  - {name: 'dog', url: 'https://s.91gzy.top/api/v1/client/subscribe?token=9832fc30b439a41deb4e71e7ab867697', interval: 300 }
   - {name: 'mikasa', url: 'https://mi6k1a6sa.xyz/api/v1/client/subscribe?token=9d0f29ff0c73e584f85d8db4e2b18bf6', interval: 300 }
 
 dns:
